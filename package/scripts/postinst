@@ -1,0 +1,98 @@
+#!/bin/sh
+[ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
+
+ROOT="${IPKG_INSTROOT:-}"
+TEXT="${ROOT}/etc/gl_screen/language/text/default"
+SRC="${ROOT}/etc/gl_screen/language/text/default.zh-cn"
+SCREEN_BINARY="${ROOT}/usr/bin/gl_screen"
+SCREEN_BACKUP="${SCREEN_BINARY}.gl-screen-i18n-zh-cn.orig"
+SCREEN_PATCH="${ROOT}/usr/lib/gl-screen-i18n-zh-cn/gl_screen.patch"
+SCREEN_PATCH_SHA256=f453a4d5d1d7dbc02be51d32f5d60ab2bbf41497d8792c40da6e4c3fe5a31ac2
+SCREEN_PATCHED_SHA256=6071a43a08b87932d06518d3350c4b4bb8a348b59b9d59feb88073381e414cc8
+SWITCH_SCRIPT="${ROOT}/usr/bin/screen_disp_switch"
+LAYOUTS="${ROOT}/etc/gl_screen/config/reference/dpr/layout ${ROOT}/etc/gl_screen/config/inch/dpr/layout ${ROOT}/etc/gl_screen/config/inch/ndpr/layout"
+
+if [ ! -f "$SCREEN_BACKUP" ] || [ ! -f "$SCREEN_PATCH" ]; then
+	echo "gl-screen-i18n-zh-cn: missing gl_screen backup or patch blob" >&2
+	exit 1
+fi
+SCREEN_PATCH_HASH_OUTPUT="$(sha256sum "$SCREEN_PATCH" 2>/dev/null)"
+SCREEN_PATCH_ACTUAL_SHA256="${SCREEN_PATCH_HASH_OUTPUT%% *}"
+if [ "$SCREEN_PATCH_ACTUAL_SHA256" != "$SCREEN_PATCH_SHA256" ]; then
+	echo "gl-screen-i18n-zh-cn: gl_screen patch blob SHA-256 mismatch" >&2
+	exit 1
+fi
+
+# Always patch a fresh copy of the verified original.  Atomic rename avoids
+# writing into the inode currently mapped by the running screen process.
+SCREEN_TMP="${SCREEN_BINARY}.gl-screen-i18n-zh-cn.tmp.$$"
+cleanup_screen_tmp() {
+	[ -n "$SCREEN_TMP" ] && rm -f "$SCREEN_TMP"
+}
+trap cleanup_screen_tmp EXIT HUP INT TERM
+cp "$SCREEN_BACKUP" "$SCREEN_TMP" || exit 1
+apply_screen_chunk() {
+	dd if="$SCREEN_PATCH" of="$SCREEN_TMP" bs=1 skip="$1" seek="$2" count="$3" conv=notrunc 2>/dev/null
+}
+apply_screen_chunk 0 208 8 || exit 1
+apply_screen_chunk 0 216 8 || exit 1
+apply_screen_chunk 8 457900 4 || exit 1
+apply_screen_chunk 12 505916 4 || exit 1
+apply_screen_chunk 16 457904 4 || exit 1
+apply_screen_chunk 16 505920 4 || exit 1
+apply_screen_chunk 20 1574536 16 || exit 1
+apply_screen_chunk 36 2155920 19 || exit 1
+SCREEN_HASH_OUTPUT="$(sha256sum "$SCREEN_TMP" 2>/dev/null)"
+SCREEN_ACTUAL_SHA256="${SCREEN_HASH_OUTPUT%% *}"
+if [ "$SCREEN_ACTUAL_SHA256" != "$SCREEN_PATCHED_SHA256" ]; then
+	echo "gl-screen-i18n-zh-cn: patched gl_screen SHA-256 mismatch" >&2
+	echo "Expected: $SCREEN_PATCHED_SHA256" >&2
+	echo "Actual:   ${SCREEN_ACTUAL_SHA256:-unavailable}" >&2
+	exit 1
+fi
+chmod 0755 "$SCREEN_TMP" || exit 1
+mv -f "$SCREEN_TMP" "$SCREEN_BINARY" || exit 1
+SCREEN_TMP=""
+trap - EXIT HUP INT TERM
+
+if [ -f "$SRC" ]; then
+	cp "$SRC" "$TEXT" || exit 1
+	# These two entries are newer than the reference E5800 language snapshot.
+	# Pin them by key as well as in sources/zh_cn so upgrades cannot retain stale text.
+	sed -i \
+		-e 's/^SWITCH_BUTTON_TOGGLE_LABEL_TEXT .*/SWITCH_BUTTON_TOGGLE_LABEL_TEXT "拨动开关设置"/' \
+		-e 's/^SWITCH_BUTTON_NO_FUNCTION_LABEL_TEXT .*/SWITCH_BUTTON_NO_FUNCTION_LABEL_TEXT "无功能"/' \
+		"$TEXT" || exit 1
+else
+	echo "gl-screen-i18n-zh-cn: missing $SRC" >&2
+	exit 1
+fi
+
+if [ -f "$SWITCH_SCRIPT" ]; then
+	# The default case means no function is configured.  It is the dynamic
+	# "No Function" value, not the settings-page title "Toggle Button".
+	sed -i \
+		-e 's/msg="Toggle Button"/msg="无功能"/g' \
+		-e 's/msg="No Function"/msg="无功能"/g' \
+		-e 's/msg="拨动开关设置"/msg="无功能"/g' \
+		"$SWITCH_SCRIPT" || exit 1
+fi
+
+for LAYOUT in $LAYOUTS; do
+	if [ -f "$LAYOUT" ]; then
+		sed -i \
+			-e 's/^LOCK_SCREEN_DATA_STYLE1_DAY_LABEL_FORMAT .*/LOCK_SCREEN_DATA_STYLE1_DAY_LABEL_FORMAT "%s%d日"/' \
+			-e 's/^LOCK_SCREEN_DATA_STYLE2_DAY_LABEL_FORMAT .*/LOCK_SCREEN_DATA_STYLE2_DAY_LABEL_FORMAT "%s%d日"/' \
+			-e 's/^INTERNET_TETHERING_CARD_WIDTH 116$/INTERNET_TETHERING_CARD_WIDTH 108/' \
+			-e 's/^INTERNET_TETHERING_CARD_WIDTH 156$/INTERNET_TETHERING_CARD_WIDTH 148/' \
+			-e 's/^FASTSETTING_LOCK_SCREEN_LABEL_X .*/FASTSETTING_LOCK_SCREEN_LABEL_X 128/' \
+			-e 's/^FASTSETTING_LOCK_SCREEN_LABEL_WIDTH .*/FASTSETTING_LOCK_SCREEN_LABEL_WIDTH 64/' \
+			-e 's/^FASTSETTING_SCREEN_OFF_LABEL_X .*/FASTSETTING_SCREEN_OFF_LABEL_X 128/' \
+			"$LAYOUT" || exit 1
+	fi
+done
+
+if [ -z "$ROOT" ] && [ -x /etc/init.d/gl_screen ]; then
+	/etc/init.d/gl_screen restart
+fi
+exit 0

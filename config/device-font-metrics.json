@@ -1,0 +1,43 @@
+{
+  "_comment": "Vertical metrics from the supplied stock gl_screen language/ttf files",
+  "default_medium": {
+    "ascent": 1025,
+    "descent": -275,
+    "lineGap": 0,
+    "sTypoAscender": 1025,
+    "sTypoDescender": -275,
+    "sTypoLineGap": 0,
+    "usWinAscent": 1120,
+    "usWinDescent": 275
+  },
+  "default_semibold": {
+    "ascent": 1025,
+    "descent": -275,
+    "lineGap": 0,
+    "sTypoAscender": 1025,
+    "sTypoDescender": -275,
+    "sTypoLineGap": 0,
+    "usWinAscent": 1120,
+    "usWinDescent": 275
+  },
+  "default_bold": {
+    "ascent": 1025,
+    "descent": -275,
+    "lineGap": 0,
+    "sTypoAscender": 1025,
+    "sTypoDescender": -275,
+    "sTypoLineGap": 0,
+    "usWinAscent": 1120,
+    "usWinDescent": 275
+  },
+  "default_mono_medium": {
+    "ascent": 1025,
+    "descent": -275,
+    "lineGap": 0,
+    "sTypoAscender": 1025,
+    "sTypoDescender": -275,
+    "sTypoLineGap": 0,
+    "usWinAscent": 1025,
+    "usWinDescent": 275
+  }
+}

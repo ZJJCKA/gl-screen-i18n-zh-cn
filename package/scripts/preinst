@@ -1,0 +1,85 @@
+#!/bin/sh
+# 在 postinst 覆盖 language/text/default 之前校验并备份原版英文。
+[ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
+
+ROOT="${IPKG_INSTROOT:-}"
+TEXT="${ROOT}/etc/gl_screen/language/text/default"
+BACKUP="${TEXT}.opkg-dist"
+SCREEN_BINARY="${ROOT}/usr/bin/gl_screen"
+SCREEN_BACKUP="${SCREEN_BINARY}.gl-screen-i18n-zh-cn.orig"
+SWITCH_SCRIPT="${ROOT}/usr/bin/screen_disp_switch"
+SWITCH_BACKUP="${SWITCH_SCRIPT}.gl-screen-i18n-zh-cn.orig"
+LAYOUTS="${ROOT}/etc/gl_screen/config/reference/dpr/layout ${ROOT}/etc/gl_screen/config/inch/dpr/layout ${ROOT}/etc/gl_screen/config/inch/ndpr/layout"
+EXPECTED_SHA256=d8d8a4ea59d2a5c2a60a9d8f4544c2aaa15c3313410b4de349e0b6670227ccf5
+SCREEN_ORIGINAL_SHA256=a9b910792f20b27e948704eb50dadf3de5a553f42a64868ee978e810688a0285
+SCREEN_PATCHED_SHA256=6071a43a08b87932d06518d3350c4b4bb8a348b59b9d59feb88073381e414cc8
+
+case "$1" in
+install)
+	if [ ! -f "$TEXT" ]; then
+		echo "gl-screen-i18n-zh-cn: missing $TEXT" >&2
+		exit 1
+	fi
+	if [ ! -f "$BACKUP" ]; then
+		HASH_OUTPUT="$(sha256sum "$TEXT" 2>/dev/null)"
+		ACTUAL_SHA256="${HASH_OUTPUT%% *}"
+		if [ "$ACTUAL_SHA256" != "$EXPECTED_SHA256" ] && [ "${GL_SCREEN_I18N_FORCE:-0}" != "1" ]; then
+			echo "gl-screen-i18n-zh-cn: stock language file does not match the supplied snapshot." >&2
+			echo "Expected: $EXPECTED_SHA256" >&2
+			echo "Actual:   ${ACTUAL_SHA256:-unavailable}" >&2
+			echo "Set GL_SCREEN_I18N_FORCE=1 only after checking firmware compatibility." >&2
+			exit 1
+		fi
+		cp "$TEXT" "$BACKUP" || exit 1
+	fi
+	;;
+upgrade)
+	# 保留首次安装时备份，避免把中文版当成原版。
+	;;
+esac
+
+# gl_screen 是闭源 AArch64 ELF，只允许补丁作用于已反汇编验证的精确版本。
+if [ ! -f "$SCREEN_BINARY" ]; then
+	echo "gl-screen-i18n-zh-cn: missing $SCREEN_BINARY" >&2
+	exit 1
+fi
+SCREEN_HASH_OUTPUT="$(sha256sum "$SCREEN_BINARY" 2>/dev/null)"
+SCREEN_ACTUAL_SHA256="${SCREEN_HASH_OUTPUT%% *}"
+if [ -f "$SCREEN_BACKUP" ]; then
+	SCREEN_BACKUP_HASH_OUTPUT="$(sha256sum "$SCREEN_BACKUP" 2>/dev/null)"
+	SCREEN_BACKUP_ACTUAL_SHA256="${SCREEN_BACKUP_HASH_OUTPUT%% *}"
+	if [ "$SCREEN_BACKUP_ACTUAL_SHA256" != "$SCREEN_ORIGINAL_SHA256" ]; then
+		echo "gl-screen-i18n-zh-cn: existing gl_screen backup has an unexpected SHA-256." >&2
+		exit 1
+	fi
+	case "$SCREEN_ACTUAL_SHA256" in
+	"$SCREEN_ORIGINAL_SHA256"|"$SCREEN_PATCHED_SHA256") ;;
+	*)
+		echo "gl-screen-i18n-zh-cn: current gl_screen is neither the supported original nor patched build." >&2
+		echo "Actual: ${SCREEN_ACTUAL_SHA256:-unavailable}" >&2
+		exit 1
+		;;
+	esac
+else
+	if [ "$SCREEN_ACTUAL_SHA256" != "$SCREEN_ORIGINAL_SHA256" ]; then
+		echo "gl-screen-i18n-zh-cn: unsupported /usr/bin/gl_screen; refusing binary patch." >&2
+		echo "Expected: $SCREEN_ORIGINAL_SHA256" >&2
+		echo "Actual:   ${SCREEN_ACTUAL_SHA256:-unavailable}" >&2
+		exit 1
+	fi
+	cp "$SCREEN_BINARY" "$SCREEN_BACKUP" || exit 1
+fi
+
+# 动态拨动开关提示由此脚本直接传给 gl_screen，不经过语言键。
+if [ -f "$SWITCH_SCRIPT" ] && [ ! -f "$SWITCH_BACKUP" ]; then
+	cp "$SWITCH_SCRIPT" "$SWITCH_BACKUP" || exit 1
+fi
+
+for LAYOUT in $LAYOUTS; do
+	LAYOUT_BACKUP="${LAYOUT}.gl-screen-i18n-zh-cn.orig"
+	if [ -f "$LAYOUT" ] && [ ! -f "$LAYOUT_BACKUP" ]; then
+		cp "$LAYOUT" "$LAYOUT_BACKUP" || exit 1
+	fi
+done
+
+exit 0

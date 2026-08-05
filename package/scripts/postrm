@@ -1,0 +1,44 @@
+#!/bin/sh
+# opkg 会先删除包内文件，再在 postrm 从备份还原英文 default。
+[ "${IPKG_NO_SCRIPT}" = "1" ] && exit 0
+
+ROOT="${IPKG_INSTROOT:-}"
+TEXT="${ROOT}/etc/gl_screen/language/text/default"
+BACKUP="${TEXT}.opkg-dist"
+SCREEN_BINARY="${ROOT}/usr/bin/gl_screen"
+SCREEN_BACKUP="${SCREEN_BINARY}.gl-screen-i18n-zh-cn.orig"
+SWITCH_SCRIPT="${ROOT}/usr/bin/screen_disp_switch"
+SWITCH_BACKUP="${SWITCH_SCRIPT}.gl-screen-i18n-zh-cn.orig"
+LAYOUTS="${ROOT}/etc/gl_screen/config/reference/dpr/layout ${ROOT}/etc/gl_screen/config/inch/dpr/layout ${ROOT}/etc/gl_screen/config/inch/ndpr/layout"
+
+case "$1" in
+remove|purge)
+	if [ -f "$BACKUP" ]; then
+		cp "$BACKUP" "$TEXT" || exit 1
+		rm -f "$BACKUP"
+	fi
+	if [ -f "$SCREEN_BACKUP" ]; then
+		SCREEN_TMP="${SCREEN_BINARY}.gl-screen-i18n-zh-cn.restore.$$"
+		cp "$SCREEN_BACKUP" "$SCREEN_TMP" || exit 1
+		chmod 0755 "$SCREEN_TMP" || exit 1
+		mv -f "$SCREEN_TMP" "$SCREEN_BINARY" || exit 1
+		rm -f "$SCREEN_BACKUP"
+	fi
+	if [ -f "$SWITCH_BACKUP" ]; then
+		cp "$SWITCH_BACKUP" "$SWITCH_SCRIPT" || exit 1
+		rm -f "$SWITCH_BACKUP"
+	fi
+	for LAYOUT in $LAYOUTS; do
+		LAYOUT_BACKUP="${LAYOUT}.gl-screen-i18n-zh-cn.orig"
+		if [ -f "$LAYOUT_BACKUP" ]; then
+			cp "$LAYOUT_BACKUP" "$LAYOUT" || exit 1
+			rm -f "$LAYOUT_BACKUP"
+		fi
+	done
+	if [ -z "$ROOT" ] && [ -x /etc/init.d/gl_screen ]; then
+		/etc/init.d/gl_screen restart
+	fi
+	;;
+esac
+
+exit 0
