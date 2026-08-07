@@ -183,6 +183,8 @@ def main() -> None:
     for expected_line in (
         'SWITCH_BUTTON_TOGGLE_LABEL_TEXT "拨动开关设置"',
         'SWITCH_BUTTON_NO_FUNCTION_LABEL_TEXT "无功能"',
+        'WAKE_DISPLAY_STYLE_1_OPTION_LABEL_TEXT "主题一"',
+        'WAKE_DISPLAY_STYLE_2_OPTION_LABEL_TEXT "主题二"',
         'INTERNET_TETHERING_CARD_LABEL_TEXT "USB共享"',
         'TETHERING_TITLE_LABEL_TEXT "USB共享"',
         'FASTSETTING_LOCK_SCREEN_LABEL_TEXT "锁定屏幕"',
