@@ -28,6 +28,7 @@ EXPECTED_FONT_LINES = {
     'FONT_SEMIBOLD "default_medium_zh-cn"',
     'FONT_MONO_MEDIUM "default_medium_zh-cn"',
 }
+EXTRA_DYNAMIC_TEXT = "中国移动中国联通中国电信中国广电"
 KEY_RE = re.compile(r"^([A-Za-z0-9_@]+)\s+(.+)$")
 
 
@@ -209,17 +210,29 @@ def main() -> None:
     if packaged_fonts != expected_packaged_fonts:
         raise SystemExit(f"ERROR: packaged fonts are {sorted(packaged_fonts)}")
 
-    required_cjk = {character for character in lang if "\u3400" <= character <= "\u9fff"}
+    required_codepoints = {
+        ord(character)
+        for character in lang + EXTRA_DYNAMIC_TEXT
+        if ord(character) >= 0x20
+    }
     expected_metrics = json.loads(METRICS_JSON.read_text(encoding="utf-8"))
     for basename in EXPECTED_FONTS:
         font_name = f"etc/gl_screen/language/ttf/{basename}.ttf"
         if font_name not in data_files:
             raise SystemExit(f"ERROR: missing {font_name}")
+        if len(data_files[font_name]) > 300_000:
+            raise SystemExit(
+                f"ERROR: UI font was not subset: {font_name} "
+                f"({len(data_files[font_name])} bytes)"
+            )
         font = TTFont(io.BytesIO(data_files[font_name]))
         cmap = set(font.getBestCmap() or {})
-        missing = sorted(character for character in required_cjk if ord(character) not in cmap)
+        missing = sorted(required_codepoints.difference(cmap))
         if missing:
-            raise SystemExit(f"ERROR: {basename} lacks CJK glyphs: {''.join(missing[:20])}")
+            raise SystemExit(
+                f"ERROR: {basename} lacks required glyphs: "
+                f"{''.join(chr(value) for value in missing[:20])}"
+            )
         stem = basename.removesuffix("_zh-cn")
         metrics = expected_metrics[stem]
         actual_hhea = (font["hhea"].ascent, font["hhea"].descent, font["hhea"].lineGap)
@@ -234,8 +247,8 @@ def main() -> None:
     print(f"  outer members: {', '.join(outer_order)}")
     print(f"  payload files: {len(data_files)}")
     print(f"  language entries: {len(keys)} ({len(set(keys))} unique keys)")
-    print(f"  required CJK glyphs: {len(required_cjk)} (present in shared font)")
-    print("  font roles: medium/bold/semibold/mono share one complete font")
+    print(f"  required UI codepoints: {len(required_codepoints)} (present in shared font)")
+    print("  font roles: medium/bold/semibold/mono share one static-UI subset")
     print("  font metrics: match the supplied stock medium font")
     print(f"  gl_screen patch: 55 bytes, {ORIGINAL_SHA256[:12]}... -> {PATCHED_SHA256[:12]}...")
     print(f"  sha256: {digest}")

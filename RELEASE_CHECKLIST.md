@@ -7,8 +7,11 @@
 - [ ] `/usr/bin/gl_screen` 与 `build_gl_screen_patch.py` 的原始 SHA-256 相符
 - [ ] `build_gl_screen_patch.py --verify-binary <gl_screen>` 通过
 - [ ] `python scripts/validate_zh_cn.py` 通过
-- [ ] `python scripts/prepare_overlay.py` 成功生成 1 个共享完整字体和语言文件
+- [ ] `python scripts/prepare_overlay.py` 成功生成 1 个共享静态界面字形子集和语言文件
+- [ ] 共享字体小于 300 KB，并覆盖完整汉化词典与四个国内运营商名称
+- [ ] 精简范围不包含中文 SSID；动态 SSID 按定稿使用英文或数字
 - [ ] `python scripts/build_ipk.py` 成功生成 `dist/*.ipk`
+- [ ] `python scripts/validate_ipk.py dist/<package>.ipk` 完整通过
 
 ## 包结构
 

@@ -32,6 +32,8 @@ DEFAULT_HOMEPAGE = "https://github.com/ZJJCKA/gl-screen-i18n-zh-cn"
 DEFAULT_DESCRIPTION = (
     "GL.iNet gl_screen Simplified Chinese i18n (language + TTF).\n"
     " Translation structure based on tutugreen/gl-screen-e5800-i18n-zh-cn.\n"
+    " Installs one shared static-UI Chinese font subset.\n"
+    " Covers translated UI and known Chinese carrier names; Chinese SSIDs are excluded.\n"
     " Overlays /etc/gl_screen/language and localizes dynamic switch messages.\n"
     " Applies a hash-locked reversible patch for hard-coded switch labels.\n"
     " Backs up /usr/bin/gl_screen and /usr/bin/screen_disp_switch before patching.\n"
