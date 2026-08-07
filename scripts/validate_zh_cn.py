@@ -81,6 +81,20 @@ def main() -> None:
     en_lines = en_path.read_text(encoding="utf-8").splitlines()
     zh_lines = zh_path.read_text(encoding="utf-8").splitlines()
 
+    expected_font_lines = {
+        'FONT_MEDIUM "default_medium_zh-cn"',
+        'FONT_BOLD "default_medium_zh-cn"',
+        'FONT_SEMIBOLD "default_medium_zh-cn"',
+        'FONT_MONO_MEDIUM "default_medium_zh-cn"',
+    }
+    actual_font_lines = {line for line in zh_lines if line.startswith("FONT_")}
+    if actual_font_lines != expected_font_lines:
+        raise SystemExit(
+            "ERROR: lightweight font policy mismatch: "
+            f"{sorted(actual_font_lines)}"
+        )
+    print("OK: four font roles share one complete Chinese font")
+
     print(f"物理行数: en={len(en_lines)}, zh_cn={len(zh_lines)}")
     has_error = False
 

@@ -1,8 +1,8 @@
 // gl-screen-i18n-zh-cn
 FONT_MEDIUM "default_medium_zh-cn"
-FONT_BOLD "default_bold_zh-cn"
-FONT_SEMIBOLD "default_semibold_zh-cn"
-FONT_MONO_MEDIUM "default_mono_medium_zh-cn"
+FONT_BOLD "default_medium_zh-cn"
+FONT_SEMIBOLD "default_medium_zh-cn"
+FONT_MONO_MEDIUM "default_medium_zh-cn"
 OPTION_VALUE_LABEL_FONT FONT_MEDIUM
 OPTION_ATTRIBUTE_LABEL_FONT FONT_SEMIBOLD
 TITLE_LABEL_FONT FONT_BOLD

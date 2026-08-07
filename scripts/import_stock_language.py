@@ -16,9 +16,9 @@ PROJECT_HEADER = "// gl-screen-i18n-zh-cn"
 
 FONT_VALUES = {
     "FONT_MEDIUM": '"default_medium_zh-cn"',
-    "FONT_BOLD": '"default_bold_zh-cn"',
-    "FONT_SEMIBOLD": '"default_semibold_zh-cn"',
-    "FONT_MONO_MEDIUM": '"default_mono_medium_zh-cn"',
+    "FONT_BOLD": '"default_medium_zh-cn"',
+    "FONT_SEMIBOLD": '"default_medium_zh-cn"',
+    "FONT_MONO_MEDIUM": '"default_medium_zh-cn"',
 }
 
 NEW_TRANSLATIONS = {

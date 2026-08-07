@@ -24,9 +24,6 @@ FONT_OVERLAY_SUFFIX = "_zh-cn.ttf"
 
 FONT_STEMS = (
     "default_medium",
-    "default_semibold",
-    "default_bold",
-    "default_mono_medium",
 )
 
 

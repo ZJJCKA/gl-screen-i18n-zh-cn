@@ -21,11 +21,12 @@ ALLOWED_DATA_PREFIXES = (
     "etc/gl_screen/language/ttf/",
     "usr/lib/gl-screen-i18n-zh-cn/",
 )
-EXPECTED_FONTS = {
-    "default_medium_zh-cn",
-    "default_semibold_zh-cn",
-    "default_bold_zh-cn",
-    "default_mono_medium_zh-cn",
+EXPECTED_FONTS = {"default_medium_zh-cn"}
+EXPECTED_FONT_LINES = {
+    'FONT_MEDIUM "default_medium_zh-cn"',
+    'FONT_BOLD "default_medium_zh-cn"',
+    'FONT_SEMIBOLD "default_medium_zh-cn"',
+    'FONT_MONO_MEDIUM "default_medium_zh-cn"',
 }
 KEY_RE = re.compile(r"^([A-Za-z0-9_@]+)\s+(.+)$")
 
@@ -194,6 +195,19 @@ def main() -> None:
     }
     if referenced_fonts != EXPECTED_FONTS:
         raise SystemExit(f"ERROR: font references are {sorted(referenced_fonts)}")
+    actual_font_lines = {line for line in lang.splitlines() if line.startswith("FONT_")}
+    if actual_font_lines != EXPECTED_FONT_LINES:
+        raise SystemExit(f"ERROR: lightweight font roles are {sorted(actual_font_lines)}")
+
+    packaged_fonts = {
+        name for name in data_files
+        if name.startswith("etc/gl_screen/language/ttf/") and name.endswith(".ttf")
+    }
+    expected_packaged_fonts = {
+        "etc/gl_screen/language/ttf/default_medium_zh-cn.ttf"
+    }
+    if packaged_fonts != expected_packaged_fonts:
+        raise SystemExit(f"ERROR: packaged fonts are {sorted(packaged_fonts)}")
 
     required_cjk = {character for character in lang if "\u3400" <= character <= "\u9fff"}
     expected_metrics = json.loads(METRICS_JSON.read_text(encoding="utf-8"))
@@ -220,8 +234,9 @@ def main() -> None:
     print(f"  outer members: {', '.join(outer_order)}")
     print(f"  payload files: {len(data_files)}")
     print(f"  language entries: {len(keys)} ({len(set(keys))} unique keys)")
-    print(f"  required CJK glyphs: {len(required_cjk)} (present in all 4 fonts)")
-    print("  font metrics: match the supplied stock fonts")
+    print(f"  required CJK glyphs: {len(required_cjk)} (present in shared font)")
+    print("  font roles: medium/bold/semibold/mono share one complete font")
+    print("  font metrics: match the supplied stock medium font")
     print(f"  gl_screen patch: 55 bytes, {ORIGINAL_SHA256[:12]}... -> {PATCHED_SHA256[:12]}...")
     print(f"  sha256: {digest}")
 

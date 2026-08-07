@@ -7,7 +7,7 @@
 - [ ] `/usr/bin/gl_screen` 与 `build_gl_screen_patch.py` 的原始 SHA-256 相符
 - [ ] `build_gl_screen_patch.py --verify-binary <gl_screen>` 通过
 - [ ] `python scripts/validate_zh_cn.py` 通过
-- [ ] `python scripts/prepare_overlay.py` 成功生成 4 个字体和语言文件
+- [ ] `python scripts/prepare_overlay.py` 成功生成 1 个共享完整字体和语言文件
 - [ ] `python scripts/build_ipk.py` 成功生成 `dist/*.ipk`
 
 ## 包结构
