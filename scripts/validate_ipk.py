@@ -13,7 +13,7 @@ from pathlib import Path
 from fontTools.ttLib import TTFont
 
 from build_gl_screen_patch import ORIGINAL_SHA256, PATCH_BLOB, PATCHED_SHA256, sha256
-from repo_paths import DEPENDS_GL_SCREEN_SDK, METRICS_JSON
+from repo_paths import DEPENDS_GL_SCREEN_SDK, METRICS_JSON, load_extra_glyphs
 
 
 ALLOWED_DATA_PREFIXES = (
@@ -21,6 +21,10 @@ ALLOWED_DATA_PREFIXES = (
     "etc/gl_screen/language/ttf/",
     "usr/lib/gl-screen-i18n-zh-cn/",
 )
+RUNTIME_EXCLUDED_PATHS = {
+    "etc/gl_screen/language/ttf/README.txt",
+    "etc/gl_screen/language/ttf/license.txt",
+}
 EXPECTED_FONTS = {"default_medium_zh-cn"}
 EXPECTED_FONT_LINES = {
     'FONT_MEDIUM "default_medium_zh-cn"',
@@ -164,6 +168,9 @@ def main() -> None:
     ]
     if unexpected:
         raise SystemExit(f"ERROR: payload escapes approved overlay paths: {unexpected}")
+    packaged_docs = sorted(set(data_files).intersection(RUNTIME_EXCLUDED_PATHS))
+    if packaged_docs:
+        raise SystemExit(f"ERROR: source-only documentation was packaged: {packaged_docs}")
 
     patch_name = "usr/lib/gl-screen-i18n-zh-cn/gl_screen.patch"
     if data_files.get(patch_name) != PATCH_BLOB:
@@ -214,7 +221,7 @@ def main() -> None:
 
     required_codepoints = {
         ord(character)
-        for character in lang + EXTRA_DYNAMIC_TEXT
+        for character in lang + EXTRA_DYNAMIC_TEXT + load_extra_glyphs()
         if ord(character) >= 0x20
     }
     expected_metrics = json.loads(METRICS_JSON.read_text(encoding="utf-8"))
@@ -222,18 +229,40 @@ def main() -> None:
         font_name = f"etc/gl_screen/language/ttf/{basename}.ttf"
         if font_name not in data_files:
             raise SystemExit(f"ERROR: missing {font_name}")
-        if len(data_files[font_name]) > 300_000:
-            raise SystemExit(
-                f"ERROR: UI font was not subset: {font_name} "
-                f"({len(data_files[font_name])} bytes)"
-            )
         font = TTFont(io.BytesIO(data_files[font_name]))
         cmap = set(font.getBestCmap() or {})
+        glyph_count = len(font.getGlyphOrder())
+        if glyph_count > len(cmap) + 16:
+            raise SystemExit(
+                f"ERROR: {basename} retains unused layout-only glyphs: "
+                f"{glyph_count} glyphs, {len(cmap)} mapped codepoints"
+            )
+        missing_hinting = [table for table in ("fpgm", "prep", "cvt ") if table not in font]
+        if missing_hinting:
+            raise SystemExit(
+                f"ERROR: {basename} lost TrueType hinting tables: {missing_hinting}"
+            )
+        retained_unused_tables = [
+            table
+            for table in ("BASE", "GDEF", "GPOS", "GSUB", "JSTF", "vhea", "vmtx")
+            if table in font
+        ]
+        if retained_unused_tables:
+            raise SystemExit(
+                f"ERROR: {basename} retains unused layout tables: "
+                f"{retained_unused_tables}"
+            )
         missing = sorted(required_codepoints.difference(cmap))
         if missing:
             raise SystemExit(
                 f"ERROR: {basename} lacks required glyphs: "
                 f"{''.join(chr(value) for value in missing[:20])}"
+            )
+        unexpected_codepoints = sorted(cmap.difference(required_codepoints))
+        if len(unexpected_codepoints) > 16:
+            raise SystemExit(
+                f"ERROR: {basename} was not tightly subset: "
+                f"{len(unexpected_codepoints)} extra mapped codepoints"
             )
         stem = basename.removesuffix("_zh-cn")
         metrics = expected_metrics[stem]
@@ -250,7 +279,7 @@ def main() -> None:
     print(f"  payload files: {len(data_files)}")
     print(f"  language entries: {len(keys)} ({len(set(keys))} unique keys)")
     print(f"  required UI codepoints: {len(required_codepoints)} (present in shared font)")
-    print("  font roles: medium/bold/semibold/mono share one static-UI subset")
+    print("  font roles: medium/bold/semibold/mono share one optimized subset")
     print("  font metrics: match the supplied stock medium font")
     print(f"  gl_screen patch: 55 bytes, {ORIGINAL_SHA256[:12]}... -> {PATCHED_SHA256[:12]}...")
     print(f"  sha256: {digest}")
