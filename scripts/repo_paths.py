@@ -15,6 +15,7 @@ OVERLAY_TTF_DIR = OVERLAY_DIR / "etc" / "gl_screen" / "language" / "ttf"
 GL_SCREEN_PATCH_DIR = OVERLAY_DIR / "usr" / "lib" / "gl-screen-i18n-zh-cn"
 GL_SCREEN_PATCH_BLOB = GL_SCREEN_PATCH_DIR / "gl_screen.patch"
 METRICS_JSON = REPO_ROOT / "config" / "device-font-metrics.json"
+EXTRA_GLYPHS_TXT = REPO_ROOT / "config" / "extra-glyphs.txt"
 
 ASSETS_IBM_CACHE = ASSETS_DIR / "cache" / "ibm-plex-sans-sc"
 ASSETS_DEVICE_ORIGINAL = ASSETS_DIR / "device-original-ttf"
@@ -25,6 +26,22 @@ FONT_OVERLAY_SUFFIX = "_zh-cn.ttf"
 FONT_STEMS = (
     "default_medium",
 )
+
+
+def load_extra_glyphs() -> str:
+    if not EXTRA_GLYPHS_TXT.is_file():
+        raise FileNotFoundError(f"Missing extra glyph allowlist: {EXTRA_GLYPHS_TXT}")
+    text = "".join(
+        line.strip()
+        for line in EXTRA_GLYPHS_TXT.read_text(encoding="utf-8").splitlines()
+        if line.strip() and not line.lstrip().startswith("#")
+    )
+    cjk = {character for character in text if "\u3400" <= character <= "\u9fff"}
+    if len(cjk) < 3500:
+        raise ValueError(
+            f"Extra glyph allowlist must contain at least 3500 unique CJK characters; got {len(cjk)}"
+        )
+    return text
 
 
 def overlay_font_filename(stem: str) -> str:

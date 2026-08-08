@@ -93,7 +93,7 @@ def main() -> None:
             "ERROR: lightweight font policy mismatch: "
             f"{sorted(actual_font_lines)}"
         )
-    print("OK: four font roles share one complete Chinese font")
+    print("OK: four font roles share one static-UI Chinese font subset")
 
     print(f"物理行数: en={len(en_lines)}, zh_cn={len(zh_lines)}")
     has_error = False

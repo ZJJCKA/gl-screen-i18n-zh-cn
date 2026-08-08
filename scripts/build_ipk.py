@@ -23,15 +23,22 @@ ALLOWED_PREFIXES = (
     "etc/gl_screen/language/ttf/",
     "usr/lib/gl-screen-i18n-zh-cn/",
 )
+RUNTIME_EXCLUDED_PATHS = {
+    "etc/gl_screen/language/ttf/README.txt",
+    "etc/gl_screen/language/ttf/license.txt",
+}
 LANG_DEFAULT_REL = Path("etc/gl_screen/language/text/default")
 LANG_PACKAGE_REL = Path("etc/gl_screen/language/text/default.zh-cn")
 
 DEFAULT_PACKAGE = "gl-screen-i18n-zh-cn"
+OUTPUT_FEATURE_TAG = "hf3500-flow"
 DEFAULT_MAINTAINER = "Local OpenWrt package"
 DEFAULT_HOMEPAGE = "https://github.com/ZJJCKA/gl-screen-i18n-zh-cn"
 DEFAULT_DESCRIPTION = (
     "GL.iNet gl_screen Simplified Chinese i18n (language + TTF).\n"
     " Translation structure based on tutugreen/gl-screen-e5800-i18n-zh-cn.\n"
+    " Installs one shared static-UI Chinese font subset.\n"
+    " Covers translated UI, carriers and dynamic SMS/SSID text with 3500 high-frequency characters.\n"
     " Overlays /etc/gl_screen/language and localizes dynamic switch messages.\n"
     " Applies a hash-locked reversible patch for hard-coded switch labels.\n"
     " Backs up /usr/bin/gl_screen and /usr/bin/screen_disp_switch before patching.\n"
@@ -65,6 +72,8 @@ def iter_payload_files(overlay_root: Path) -> list[Path]:
         rel = path.relative_to(overlay_root).as_posix()
         if not any(rel.startswith(prefix) for prefix in ALLOWED_PREFIXES):
             raise SystemExit(f"Refusing to pack outside approved overlay paths: {rel}")
+        if rel in RUNTIME_EXCLUDED_PATHS:
+            continue
         files.append(path)
     if not files:
         raise SystemExit(f"No payload files under {overlay_root}")
@@ -292,6 +301,14 @@ def build_ipk(
         else:
             ipk_path = out_dir / f"{package}_{version}_{architecture}.ipk"
             build_portable_ipk(pkg_root, ipk_path)
+
+        feature_ipk_path = out_dir / (
+            f"{package}-{OUTPUT_FEATURE_TAG}_{version}_{architecture}.ipk"
+        )
+        if ipk_path != feature_ipk_path:
+            feature_ipk_path.unlink(missing_ok=True)
+            ipk_path.replace(feature_ipk_path)
+            ipk_path = feature_ipk_path
 
     installed_kb = (sum(path.stat().st_size for path in files) + 1023) // 1024
 
